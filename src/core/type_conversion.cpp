@@ -36,6 +36,10 @@
 
 #include "type_conversion.h"
 
+#include <ui/events/event_constants.h>
+#include <ui/gfx/image/image_skia.h>
+#include <QtCore/qcoreapplication.h>
+
 namespace QtWebEngineCore {
 
 QImage toQImage(const SkBitmap &bitmap)
@@ -110,6 +114,14 @@ QImage toQImage(const SkBitmap &bitmap)
         image = toQImage(bitmap, QImage::Format_Grayscale8);
         break;
     }
+    return image;
+}
+
+QImage toQImage(const gfx::ImageSkiaRep &imageSkiaRep)
+{
+    QImage image = toQImage(imageSkiaRep.sk_bitmap());
+    if (!image.isNull() && imageSkiaRep.scale() != 1.0f)
+        image.setDevicePixelRatio(imageSkiaRep.scale());
     return image;
 }
 

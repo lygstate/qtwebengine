@@ -50,6 +50,7 @@
 
 #include "web_contents_adapter.h"
 
+#include <base/callback.h>
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
 
@@ -58,6 +59,10 @@
 QT_FORWARD_DECLARE_CLASS(QWebChannel)
 
 class WebEngineContext;
+
+namespace content {
+struct DropData;
+}
 
 namespace QtWebEngineCore {
 
@@ -82,6 +87,10 @@ public:
     WebContentsAdapterClient *adapterClient;
     quint64 nextRequestId;
     int lastFindRequestId;
+    const content::DropData *currentDropData;
+    Qt::DropAction currentDropAction;
+    bool inDragUpdateLoop;
+    base::Closure dragUpdateLoopQuitClosure;
 };
 
 } // namespace QtWebEngineCore

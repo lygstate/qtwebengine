@@ -657,6 +657,11 @@ QSharedPointer<BrowserContextAdapter> QQuickWebEngineViewPrivate::browserContext
     return m_profile->d_ptr->browserContext();
 }
 
+WebContentsAdapter *QQuickWebEngineViewPrivate::webContentsAdapter()
+{
+    return adapter.data();
+}
+
 WebEngineSettings *QQuickWebEngineViewPrivate::webEngineSettings() const
 {
     return m_settings->d_ptr.data();
@@ -796,7 +801,8 @@ QQuickWebEngineView::QQuickWebEngineView(QQuickItem *parent)
     Q_D(QQuickWebEngineView);
     d->e->q_ptr = d->q_ptr = this;
     this->setActiveFocusOnTab(true);
-    this->setFlags(QQuickItem::ItemIsFocusScope | QQuickItem::ItemAcceptsInputMethod);
+    this->setFlags(QQuickItem::ItemIsFocusScope | QQuickItem::ItemAcceptsInputMethod
+                   | QQuickItem::ItemAcceptsDrops);
 
 #ifndef QT_NO_ACCESSIBILITY
     QQuickAccessibleAttached *accessible = QQuickAccessibleAttached::qmlAttachedProperties(this);
@@ -1045,6 +1051,12 @@ void QQuickWebEngineViewPrivate::renderProcessTerminated(
                                       renderProcessExitStatus(terminationStatus)), exitCode);
 }
 
+void QQuickWebEngineViewPrivate::startDragging(const content::DropData &dropData,
+                                               Qt::DropActions allowedActions,
+                                               const QPixmap &pixmap, const QPoint &offset)
+{
+    adapter->startDragging(q_ptr->window(), dropData, allowedActions, pixmap, offset);
+}
 bool QQuickWebEngineViewPrivate::isEnabled() const
 {
     const Q_Q(QQuickWebEngineView);
@@ -1273,6 +1285,39 @@ void QQuickWebEngineView::itemChange(ItemChange change, const ItemChangeData &va
             d->adapter->wasHidden();
     }
     QQuickItem::itemChange(change, value);
+}
+
+static QPoint mapToScreen(const QQuickItem *item, const QPoint &clientPos)
+{
+    return item->window()->position() + item->mapToScene(clientPos).toPoint();
+}
+
+void QQuickWebEngineView::dragEnterEvent(QDragEnterEvent *e)
+{
+    Q_D(QQuickWebEngineView);
+    e->accept();
+    d->adapter->enterDrag(e, mapToScreen(this, e->pos()));
+}
+
+void QQuickWebEngineView::dragLeaveEvent(QDragLeaveEvent *e)
+{
+    Q_D(QQuickWebEngineView);
+    e->accept();
+    d->adapter->leaveDrag();
+}
+
+void QQuickWebEngineView::dragMoveEvent(QDragMoveEvent *e)
+{
+    Q_D(QQuickWebEngineView);
+    e->accept();
+    d->adapter->updateDragPosition(e, mapToScreen(this, e->pos()));
+}
+
+void QQuickWebEngineView::dropEvent(QDropEvent *e)
+{
+    Q_D(QQuickWebEngineView);
+    e->accept();
+    d->adapter->endDragging(e->pos(), mapToScreen(this, e->pos()));
 }
 
 void QQuickWebEngineView::triggerWebAction(WebAction action)

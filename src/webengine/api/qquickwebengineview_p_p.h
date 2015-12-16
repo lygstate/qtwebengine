@@ -175,8 +175,11 @@ public:
     virtual void requestGeometryChange(const QRect &geometry) Q_DECL_OVERRIDE { Q_UNUSED(geometry); }
     virtual bool isEnabled() const Q_DECL_OVERRIDE;
     const QObject *holdingQObject() const Q_DECL_OVERRIDE;
+    void startDragging(const content::DropData &dropData, Qt::DropActions allowedActions,
+                       const QPixmap &pixmap, const QPoint &offset) Q_DECL_OVERRIDE;
 
     virtual QSharedPointer<QtWebEngineCore::BrowserContextAdapter> browserContextAdapter() Q_DECL_OVERRIDE;
+    QtWebEngineCore::WebContentsAdapter *webContentsAdapter() Q_DECL_OVERRIDE;
 
     void setDevicePixelRatio(qreal);
     void adoptWebContents(QtWebEngineCore::WebContentsAdapter *webContents);
