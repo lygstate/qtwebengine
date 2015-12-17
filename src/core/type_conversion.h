@@ -233,6 +233,8 @@ inline std::vector<T> toVector(const QStringList &fileList)
     return selectedFiles;
 }
 
+int flagsFromModifiers(Qt::KeyboardModifiers modifiers);
+
 } // namespace QtWebEngineCore
 
 #endif // TYPE_CONVERSION_H
