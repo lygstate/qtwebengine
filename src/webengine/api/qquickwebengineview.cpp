@@ -1085,10 +1085,22 @@ void QQuickWebEngineView::runJavaScript(const QString &script, const QJSValue &c
     Q_D(QQuickWebEngineView);
     d->ensureContentsAdapter();
     if (!callback.isUndefined()) {
-        quint64 requestId = d_ptr->adapter->runJavaScriptCallbackResult(script);
+        quint64 requestId = d_ptr->adapter->runJavaScriptCallbackResult(script, QQuickWebEngineScript::MainWorld);
         d->m_callbacks.insert(requestId, callback);
     } else
-        d->adapter->runJavaScript(script);
+        d->adapter->runJavaScript(script, QQuickWebEngineScript::MainWorld);
+}
+
+void QQuickWebEngineView::runJavaScript(const QString &script, quint32 worldId, const QJSValue &callback)
+{
+    Q_D(QQuickWebEngineView);
+    if (!d->adapter)
+        return;
+    if (!callback.isUndefined()) {
+        quint64 requestId = d_ptr->adapter->runJavaScriptCallbackResult(script, worldId);
+        d->m_callbacks.insert(requestId, callback);
+    } else
+        d->adapter->runJavaScript(script, worldId);
 }
 
 qreal QQuickWebEngineView::zoomFactor() const
