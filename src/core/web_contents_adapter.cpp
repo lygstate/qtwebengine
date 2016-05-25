@@ -1022,10 +1022,7 @@ static blink::WebDragOperationsMask toWeb(const Qt::DropActions action)
 
 static void fillDropDataFromMimeData(content::DropData *dropData, const QMimeData *mimeData)
 {
-    if (mimeData->hasText())
-        dropData->text = toNullableString16(mimeData->text());
-    if (mimeData->hasHtml())
-        dropData->html = toNullableString16(mimeData->html());
+    Q_ASSERT(dropData->filenames.empty());
     Q_FOREACH (const QUrl &url, mimeData->urls()) {
         if (url.isLocalFile()) {
             ui::FileInfo uifi;
@@ -1033,6 +1030,12 @@ static void fillDropDataFromMimeData(content::DropData *dropData, const QMimeDat
             dropData->filenames.push_back(uifi);
         }
     }
+    if (!dropData->filenames.empty())
+        return;
+    if (mimeData->hasHtml())
+        dropData->html = toNullableString16(mimeData->html());
+    else if (mimeData->hasText())
+        dropData->text = toNullableString16(mimeData->text());
 }
 
 void WebContentsAdapter::enterDrag(QDragEnterEvent *e, const QPoint &screenPos)
