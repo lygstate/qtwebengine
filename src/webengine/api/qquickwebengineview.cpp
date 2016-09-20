@@ -121,8 +121,6 @@ static QAccessibleInterface *webAccessibleFactory(const QString &, QObject *obje
 
 QQuickWebEngineViewPrivate::QQuickWebEngineViewPrivate()
     : adapter(0)
-    , e(new QQuickWebEngineViewExperimental(this))
-    , v(new QQuickWebEngineViewport(this))
     , m_history(new QQuickWebEngineHistory(this))
     , m_profile(QQuickWebEngineProfile::defaultProfile())
     , m_settings(new QQuickWebEngineSettings(m_profile->settings()))
@@ -142,22 +140,7 @@ QQuickWebEngineViewPrivate::QQuickWebEngineViewPrivate()
     // QTBUG-53467
     , m_menuEnabled(true)
 {
-    // The gold standard for mobile web content is 160 dpi, and the devicePixelRatio expected
-    // is the (possibly quantized) ratio of device dpi to 160 dpi.
-    // However GUI toolkits on non-iOS platforms may be using different criteria than relative
-    // DPI (depending on the history of that platform), dictating the choice of
-    // QScreen::devicePixelRatio().
-    // Where applicable (i.e. non-iOS mobile platforms), override QScreen::devicePixelRatio
-    // and instead use a reasonable default value for viewport.devicePixelRatio to avoid every
-    // app having to use this experimental API.
     QString platform = qApp->platformName().toLower();
-    if (platform == QLatin1String("qnx")) {
-        qreal webPixelRatio = QGuiApplication::primaryScreen()->physicalDotsPerInch() / 160;
-
-        // Quantize devicePixelRatio to increments of 1 to allow JS and media queries to select
-        // 1x, 2x, 3x etc assets that fit an integral number of pixels.
-        setDevicePixelRatio(qMax(1, qRound(webPixelRatio)));
-    }
     if (platform == QLatin1Literal("eglfs"))
         m_menuEnabled = false;
 #ifndef QT_NO_ACCESSIBILITY
@@ -167,16 +150,6 @@ QQuickWebEngineViewPrivate::QQuickWebEngineViewPrivate()
 
 QQuickWebEngineViewPrivate::~QQuickWebEngineViewPrivate()
 {
-}
-
-QQuickWebEngineViewExperimental *QQuickWebEngineViewPrivate::experimental() const
-{
-    return e.data();
-}
-
-QQuickWebEngineViewport *QQuickWebEngineViewPrivate::viewport() const
-{
-    return v.data();
 }
 
 UIDelegatesManager *QQuickWebEngineViewPrivate::ui()
@@ -802,7 +775,7 @@ QQuickWebEngineView::QQuickWebEngineView(QQuickItem *parent)
     , d_ptr(new QQuickWebEngineViewPrivate)
 {
     Q_D(QQuickWebEngineView);
-    d->e->q_ptr = d->q_ptr = this;
+    d->q_ptr = this;
     this->setActiveFocusOnTab(true);
     this->setFlags(QQuickItem::ItemIsFocusScope | QQuickItem::ItemAcceptsInputMethod
                    | QQuickItem::ItemAcceptsDrops);
@@ -1118,12 +1091,6 @@ void QQuickWebEngineView::runJavaScript(const QString &script, const QJSValue &c
         d->adapter->runJavaScript(script);
 }
 
-QQuickWebEngineViewExperimental *QQuickWebEngineView::experimental() const
-{
-    Q_D(const QQuickWebEngineView);
-    return d->e.data();
-}
-
 qreal QQuickWebEngineView::zoomFactor() const
 {
     Q_D(const QQuickWebEngineView);
@@ -1153,19 +1120,6 @@ bool QQuickWebEngineView::isFullScreen() const
 {
     Q_D(const QQuickWebEngineView);
     return d->m_fullscreenMode;
-}
-
-void QQuickWebEngineViewExperimental::setExtraContextMenuEntriesComponent(QQmlComponent *contextMenuExtras)
-{
-    if (d_ptr->contextMenuExtraItems == contextMenuExtras)
-        return;
-    d_ptr->contextMenuExtraItems = contextMenuExtras;
-    emit extraContextMenuEntriesComponentChanged();
-}
-
-QQmlComponent *QQuickWebEngineViewExperimental::extraContextMenuEntriesComponent() const
-{
-    return d_ptr->contextMenuExtraItems;
 }
 
 void QQuickWebEngineView::findText(const QString &subString, FindFlags options, const QJSValue &callback)
@@ -1563,43 +1517,6 @@ void QQuickWebEngineFullScreenRequest::reject()
 {
     if (m_viewPrivate)
         m_viewPrivate->setFullScreenMode(!m_toggleOn);
-}
-
-QQuickWebEngineViewExperimental::QQuickWebEngineViewExperimental(QQuickWebEngineViewPrivate *viewPrivate)
-    : q_ptr(0)
-    , d_ptr(viewPrivate)
-{
-}
-
-QQuickWebEngineViewport *QQuickWebEngineViewExperimental::viewport() const
-{
-    Q_D(const QQuickWebEngineView);
-    return d->viewport();
-}
-
-QQuickWebEngineViewport::QQuickWebEngineViewport(QQuickWebEngineViewPrivate *viewPrivate)
-    : d_ptr(viewPrivate)
-{
-}
-
-qreal QQuickWebEngineViewport::devicePixelRatio() const
-{
-    Q_D(const QQuickWebEngineView);
-    return d->devicePixelRatio;
-}
-
-void QQuickWebEngineViewport::setDevicePixelRatio(qreal devicePixelRatio)
-{
-    Q_D(QQuickWebEngineView);
-    // Valid range is [1, inf)
-    devicePixelRatio = qMax(qreal(1.0), devicePixelRatio);
-    if (d->devicePixelRatio == devicePixelRatio)
-        return;
-    d->setDevicePixelRatio(devicePixelRatio);
-    if (!d->adapter)
-        return;
-    d->adapter->dpiScaleChanged();
-    Q_EMIT devicePixelRatioChanged();
 }
 
 QT_END_NAMESPACE
