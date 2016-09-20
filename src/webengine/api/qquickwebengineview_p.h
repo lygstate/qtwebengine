@@ -63,7 +63,6 @@ class QQuickWebEngineNavigationRequest;
 class QQuickWebEngineNewViewRequest;
 class QQuickWebEngineProfile;
 class QQuickWebEngineSettings;
-class QQuickWebEngineViewExperimental;
 class QQuickWebEngineViewPrivate;
 
 #ifdef ENABLE_QML_TESTSUPPORT_API
@@ -134,13 +133,11 @@ public:
     QColor backgroundColor() const;
     void setBackgroundColor(const QColor &color);
 
-    QQuickWebEngineViewExperimental *experimental() const;
-
     // must match WebContentsAdapterClient::NavigationRequestAction
     enum NavigationRequestAction {
         AcceptRequest,
         // Make room in the valid range of the enum so
-        // we can expose extra actions in experimental.
+        // we can expose extra actions.
         IgnoreRequest = 0xFF
     };
     Q_ENUM(NavigationRequestAction)
@@ -328,8 +325,6 @@ private:
     Q_DECLARE_PRIVATE(QQuickWebEngineView)
     QScopedPointer<QQuickWebEngineViewPrivate> d_ptr;
 
-    friend class QQuickWebEngineViewExperimental;
-    friend class QQuickWebEngineViewExperimentalExtension;
     friend class QQuickWebEngineNewViewRequest;
 #ifndef QT_NO_ACCESSIBILITY
     friend class QQuickWebEngineViewAccessible;
