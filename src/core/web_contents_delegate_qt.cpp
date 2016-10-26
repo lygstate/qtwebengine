@@ -68,6 +68,7 @@
 #include "ui/events/latency_info.h"
 
 #include <QDesktopServices>
+#include <QTimer>
 
 namespace QtWebEngineCore {
 
@@ -302,7 +303,11 @@ void WebContentsDelegateQt::RunFileChooser(content::WebContents *web_contents, c
         acceptedMimeTypes.append(toQt(*it));
 
     FilePickerController *controller = new FilePickerController(static_cast<FilePickerController::FileChooserMode>(params.mode), web_contents, toQt(params.default_file_name.value()), acceptedMimeTypes);
-    m_viewClient->runFileChooser(controller);
+
+    // Defer the call to not block base::MessageLoop::RunTask with modal dialogs.
+    QTimer::singleShot(0, [this, controller] () {
+        m_viewClient->runFileChooser(controller);
+    });
 }
 
 bool WebContentsDelegateQt::AddMessageToConsole(content::WebContents *source, int32 level, const base::string16 &message, int32 line_no, const base::string16 &source_id)
