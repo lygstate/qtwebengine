@@ -50,8 +50,10 @@ SOURCES = \
     qwebengineurlrequestjob.cpp \
     qwebengineurlschemehandler.cpp
 
+### Qt6 Remove this workaround
 unix:!isEmpty(QMAKE_LFLAGS_VERSION_SCRIPT):!static {
-    SOURCES += qtbug-60565.cpp
+    SOURCES += qtbug-60565.cpp \
+               qtbug-61521.cpp
 }
 
 msvc {
