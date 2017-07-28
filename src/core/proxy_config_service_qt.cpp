@@ -72,8 +72,8 @@ net::ProxyServer ProxyConfigServiceQt::fromQNetworkProxy(const QNetworkProxy &qt
 
 ProxyConfigServiceQt::ProxyConfigServiceQt(net::ProxyConfigService *baseService)
     : m_baseService(baseService),
-      m_registeredObserver(false),
-      m_usesSystemConfiguration(false)
+      m_usesSystemConfiguration(false),
+      m_registeredObserver(false)
 {
 }
 
