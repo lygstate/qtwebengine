@@ -37,10 +37,21 @@
 **
 ****************************************************************************/
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 #ifndef USER_SCRIPT_CONTROLLER_HOST_H
 #define USER_SCRIPT_CONTROLLER_HOST_H
 
-#include "qtwebenginecoreglobal.h"
+#include "qtwebenginecoreglobal_p.h"
 
 #include <QtCore/QSet>
 #include <QtCore/QScopedPointer>
@@ -56,7 +67,7 @@ namespace QtWebEngineCore {
 class WebContentsAdapter;
 class WebContentsAdapterPrivate;
 
-class QWEBENGINE_EXPORT UserScriptControllerHost {
+class QWEBENGINECORE_PRIVATE_EXPORT UserScriptControllerHost {
 
 public:
     UserScriptControllerHost();
