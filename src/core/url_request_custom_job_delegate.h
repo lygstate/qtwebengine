@@ -34,10 +34,21 @@
 **
 ****************************************************************************/
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 #ifndef URL_REQUEST_CUSTOM_JOB_DELEGATE_H_
 #define URL_REQUEST_CUSTOM_JOB_DELEGATE_H_
 
-#include "qtwebenginecoreglobal.h"
+#include "qtwebenginecoreglobal_p.h"
 
 #include <QObject>
 #include <QUrl>
@@ -48,7 +59,7 @@ namespace QtWebEngineCore {
 
 class URLRequestCustomJobShared;
 
-class QWEBENGINE_EXPORT URLRequestCustomJobDelegate : public QObject {
+class QWEBENGINECORE_PRIVATE_EXPORT URLRequestCustomJobDelegate : public QObject {
     Q_OBJECT
 public:
     ~URLRequestCustomJobDelegate();

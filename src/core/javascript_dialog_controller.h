@@ -34,6 +34,17 @@
 **
 ****************************************************************************/
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 #ifndef JAVASCRIPT_DIALOG_CONTROLLER_H
 #define JAVASCRIPT_DIALOG_CONTROLLER_H
 
@@ -45,7 +56,7 @@ namespace QtWebEngineCore {
 
 class JavaScriptDialogControllerPrivate;
 
-class QWEBENGINE_EXPORT JavaScriptDialogController : public QObject {
+class QWEBENGINECORE_PRIVATE_EXPORT JavaScriptDialogController : public QObject {
     Q_OBJECT
 public:
     ~JavaScriptDialogController();

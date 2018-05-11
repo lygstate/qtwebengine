@@ -34,10 +34,21 @@
 **
 ****************************************************************************/
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 #ifndef RENDER_WIDGET_HOST_VIEW_QT_DELEGATE_H
 #define RENDER_WIDGET_HOST_VIEW_QT_DELEGATE_H
 
-#include "qtwebenginecoreglobal.h"
+#include "qtwebenginecoreglobal_p.h"
 
 #include <QRect>
 #include <QtGui/qwindowdefs.h>
@@ -59,7 +70,7 @@ namespace QtWebEngineCore {
 
 class WebContentsAdapterClient;
 
-class QWEBENGINE_EXPORT RenderWidgetHostViewQtDelegateClient {
+class QWEBENGINECORE_PRIVATE_EXPORT RenderWidgetHostViewQtDelegateClient {
 public:
     virtual ~RenderWidgetHostViewQtDelegateClient() { }
     virtual QSGNode *updatePaintNode(QSGNode *) = 0;
@@ -72,7 +83,7 @@ public:
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const = 0;
 };
 
-class QWEBENGINE_EXPORT RenderWidgetHostViewQtDelegate {
+class QWEBENGINECORE_PRIVATE_EXPORT RenderWidgetHostViewQtDelegate {
 public:
     virtual ~RenderWidgetHostViewQtDelegate() { }
     virtual void initAsChild(WebContentsAdapterClient*) = 0;

@@ -49,7 +49,7 @@ QT_BEGIN_NAMESPACE
 
 class QWebEngineUrlRequestJob;
 
-class QWEBENGINE_EXPORT QWebEngineUrlSchemeHandler : public QObject {
+class QWEBENGINECORE_EXPORT QWebEngineUrlSchemeHandler : public QObject {
     Q_OBJECT
 public:
     QWebEngineUrlSchemeHandler(QObject *parent = Q_NULLPTR);

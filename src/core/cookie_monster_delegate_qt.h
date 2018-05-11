@@ -34,10 +34,21 @@
 **
 ****************************************************************************/
 
+//
+//  W A R N I N G
+//  -------------
+//
+// This file is not part of the Qt API.  It exists purely as an
+// implementation detail.  This header file may change from version to
+// version without notice, or even be removed.
+//
+// We mean it.
+//
+
 #ifndef COOKIE_MONSTER_DELEGATE_QT_H
 #define COOKIE_MONSTER_DELEGATE_QT_H
 
-#include "qtwebenginecoreglobal.h"
+#include "qtwebenginecoreglobal_p.h"
 
 QT_WARNING_PUSH
 // For some reason adding -Wno-unused-parameter to QMAKE_CXXFLAGS has no
@@ -61,7 +72,7 @@ namespace QtWebEngineCore {
 static const char* const kCookieableSchemes[] =
     { "http", "https", "qrc", "ws", "wss" };
 
-class QWEBENGINE_EXPORT CookieMonsterDelegateQt: public net::CookieMonsterDelegate {
+class QWEBENGINECORE_PRIVATE_EXPORT CookieMonsterDelegateQt: public net::CookieMonsterDelegate {
     QPointer<QWebEngineCookieStore> m_client;
     scoped_refptr<net::CookieMonster> m_cookieMonster;
 public:

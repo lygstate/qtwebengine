@@ -64,7 +64,7 @@ class CookieMonsterDelegateQt;
 
 QT_BEGIN_NAMESPACE
 
-class QWEBENGINE_PRIVATE_EXPORT QWebEngineCookieStorePrivate : public QObjectPrivate
+class QWEBENGINECORE_PRIVATE_EXPORT QWebEngineCookieStorePrivate : public QObjectPrivate
 {
     Q_DECLARE_PUBLIC(QWebEngineCookieStore)
     struct CookieData {
