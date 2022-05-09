@@ -42,6 +42,7 @@
 
 #include <QtWebEngineWidgets/qtwebenginewidgetsglobal.h>
 #include <QtWebEngineWidgets/qwebenginecertificateerror.h>
+#include <QtWebEngineWidgets/qwebenginedownloaditem.h>
 #include <QtWebEngineCore/qwebenginecallback.h>
 
 #include <QtCore/qobject.h>
