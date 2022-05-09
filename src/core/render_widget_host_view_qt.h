@@ -163,7 +163,8 @@ public:
     virtual void windowBoundsChanged() Q_DECL_OVERRIDE;
     virtual void windowChanged() Q_DECL_OVERRIDE;
     virtual bool forwardEvent(QEvent *) Q_DECL_OVERRIDE;
-    virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) const Q_DECL_OVERRIDE;
+    virtual QVariant inputMethodQuery(Qt::InputMethodQuery query) Q_DECL_OVERRIDE;
+    virtual void closePopup() Q_DECL_OVERRIDE;
 
     void handleMouseEvent(QMouseEvent*);
     void handleKeyEvent(QKeyEvent*);

@@ -1,7 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWebEngine module of the Qt Toolkit.
 **
@@ -11,24 +11,27 @@
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
 ** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPLv3 included in the
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
 ** packaging of this file. Please review the following information to
 ** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl.html.
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
 ** GNU General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or later as published by the Free
-** Software Foundation and appearing in the file LICENSE.GPL included in
-** the packaging of this file. Please review the following information to
-** ensure the GNU General Public License version 2.0 requirements will be
-** met: http://www.gnu.org/licenses/gpl-2.0.html.
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -44,15 +47,13 @@
 #include <QSurfaceFormat>
 #include <QVariant>
 #include <QWindow>
-#include <private/qquickwindow_p.h>
-#include <private/qsgcontext_p.h>
+#include <QtQuick/private/qquickwindow_p.h>
 
 namespace QtWebEngineCore {
 
 RenderWidgetHostViewQtDelegateQuick::RenderWidgetHostViewQtDelegateQuick(RenderWidgetHostViewQtDelegateClient *client, bool isPopup)
     : m_client(client)
     , m_isPopup(isPopup)
-    , m_initialized(false)
 {
     setFlag(ItemHasContents);
     setAcceptedMouseButtons(Qt::AllButtons);
@@ -62,7 +63,7 @@ RenderWidgetHostViewQtDelegateQuick::RenderWidgetHostViewQtDelegateQuick(RenderW
     setFocus(true);
     setActiveFocusOnTab(true);
 
-#ifdef Q_OS_OSX
+#if defined(Q_OS_MACOS) && !defined(QT_NO_OPENGL)
     // Check that the default QSurfaceFormat OpenGL profile is compatible with the global OpenGL
     // shared context profile, otherwise this could lead to a nasty crash.
     QOpenGLContext *globalSharedContext = QOpenGLContext::globalShareContext();
@@ -82,6 +83,10 @@ RenderWidgetHostViewQtDelegateQuick::RenderWidgetHostViewQtDelegateQuick(RenderW
 
 }
 
+RenderWidgetHostViewQtDelegateQuick::~RenderWidgetHostViewQtDelegateQuick()
+{
+}
+
 void RenderWidgetHostViewQtDelegateQuick::initAsChild(WebContentsAdapterClient* container)
 {
     QQuickWebEngineView *view = static_cast<QQuickWebEngineViewPrivate *>(container)->q_func();
@@ -90,8 +95,6 @@ void RenderWidgetHostViewQtDelegateQuick::initAsChild(WebContentsAdapterClient* 
     // Focus on creation if the view accepts it
     if (view->activeFocusOnPress())
         setFocus(true);
-    m_initialized = true;
-
 }
 
 void RenderWidgetHostViewQtDelegateQuick::initAsPopup(const QRect &r)
@@ -103,7 +106,6 @@ void RenderWidgetHostViewQtDelegateQuick::initAsPopup(const QRect &r)
     setWidth(rect.width());
     setHeight(rect.height());
     setVisible(true);
-    m_initialized = true;
 }
 
 QRectF RenderWidgetHostViewQtDelegateQuick::screenRect() const
@@ -174,10 +176,20 @@ QSGLayer *RenderWidgetHostViewQtDelegateQuick::createLayer()
     return renderContext->sceneGraphContext()->createLayer(renderContext);
 }
 
-QSGImageNode *RenderWidgetHostViewQtDelegateQuick::createImageNode()
+QSGInternalImageNode *RenderWidgetHostViewQtDelegateQuick::createInternalImageNode()
 {
     QSGRenderContext *renderContext = QQuickWindowPrivate::get(QQuickItem::window())->context;
-    return renderContext->sceneGraphContext()->createImageNode();
+    return renderContext->sceneGraphContext()->createInternalImageNode();
+}
+
+QSGImageNode *RenderWidgetHostViewQtDelegateQuick::createImageNode()
+{
+    return QQuickItem::window()->createImageNode();
+}
+
+QSGRectangleNode *RenderWidgetHostViewQtDelegateQuick::createRectangleNode()
+{
+    return QQuickItem::window()->createRectangleNode();
 }
 
 void RenderWidgetHostViewQtDelegateQuick::update()
@@ -195,26 +207,27 @@ void RenderWidgetHostViewQtDelegateQuick::resize(int width, int height)
     setSize(QSizeF(width, height));
 }
 
-void RenderWidgetHostViewQtDelegateQuick::inputMethodStateChanged(bool editorVisible)
+void RenderWidgetHostViewQtDelegateQuick::inputMethodStateChanged(bool editorVisible, bool passwordInput)
 {
-    if (qApp->inputMethod()->isVisible() == editorVisible)
-        return;
+    setFlag(QQuickItem::ItemAcceptsInputMethod, editorVisible && !passwordInput);
 
-    if (parentItem() && parentItem()->flags() & QQuickItem::ItemAcceptsInputMethod) {
-        qApp->inputMethod()->update(Qt::ImQueryInput | Qt::ImEnabled | Qt::ImHints);
+    if (parentItem())
+        parentItem()->setFlag(QQuickItem::ItemAcceptsInputMethod, editorVisible && !passwordInput);
+
+    qApp->inputMethod()->update(Qt::ImQueryInput | Qt::ImEnabled | Qt::ImHints);
+    if (qApp->inputMethod()->isVisible() != editorVisible)
         qApp->inputMethod()->setVisible(editorVisible);
-    }
-
 }
 
 bool RenderWidgetHostViewQtDelegateQuick::event(QEvent *event)
 {
-    if (event->type() == QEvent::ShortcutOverride) {
-        if (editorActionForKeyEvent(static_cast<QKeyEvent*>(event)) != QQuickWebEngineView::NoWebAction) {
-            event->accept();
-            return true;
-        }
-    }
+    if (event->type() == QEvent::ShortcutOverride)
+        return m_client->forwardEvent(event);
+
+#ifndef QT_NO_GESTURES
+    if (event->type() == QEvent::NativeGesture)
+        return m_client->forwardEvent(event);
+#endif
 
     return QQuickItem::event(event);
 }
@@ -292,10 +305,16 @@ void RenderWidgetHostViewQtDelegateQuick::touchEvent(QTouchEvent *event)
 void RenderWidgetHostViewQtDelegateQuick::hoverMoveEvent(QHoverEvent *event)
 {
     QQuickItem *parent = parentItem();
-    if (!m_isPopup && parent && !parent->property("activeFocusOnPress").toBool() && !parent->hasActiveFocus()) {
+    if ((!m_isPopup && parent && !parent->property("activeFocusOnPress").toBool()
+         && !parent->hasActiveFocus()) || event->posF() == event->oldPosF()) {
         event->ignore();
         return;
     }
+    m_client->forwardEvent(event);
+}
+
+void RenderWidgetHostViewQtDelegateQuick::hoverLeaveEvent(QHoverEvent *event)
+{
     m_client->forwardEvent(event);
 }
 
@@ -314,8 +333,7 @@ void RenderWidgetHostViewQtDelegateQuick::geometryChanged(const QRectF &newGeome
     QQuickItem::geometryChanged(newGeometry, oldGeometry);
 
     if (window()) {
-        // TODO(pvarga): Use QQuickItem::mapToGlobal from Qt 5.7
-        const QPoint globalPos = window()->mapToGlobal(position().toPoint());
+        const QPointF globalPos = QQuickItem::mapToGlobal(position());
         if (globalPos != m_lastGlobalPos) {
             m_lastGlobalPos = globalPos;
             m_client->windowBoundsChanged();
@@ -329,7 +347,7 @@ void RenderWidgetHostViewQtDelegateQuick::itemChange(ItemChange change, const It
 {
     QQuickItem::itemChange(change, value);
     if (change == QQuickItem::ItemSceneChange) {
-        foreach (const QMetaObject::Connection &c, m_windowConnections)
+        for (const QMetaObject::Connection &c : qAsConst(m_windowConnections))
             disconnect(c);
         m_windowConnections.clear();
         if (value.window) {
@@ -339,8 +357,7 @@ void RenderWidgetHostViewQtDelegateQuick::itemChange(ItemChange change, const It
                 m_windowConnections.append(connect(value.window, SIGNAL(closing(QQuickCloseEvent *)), SLOT(onHide())));
         }
 
-        if (m_initialized)
-            m_client->windowChanged();
+        m_client->windowChanged();
     } else if (change == QQuickItem::ItemVisibleHasChanged) {
         if (!m_isPopup && !value.boolValue)
             onHide();
@@ -354,10 +371,8 @@ QSGNode *RenderWidgetHostViewQtDelegateQuick::updatePaintNode(QSGNode *oldNode, 
 
 void RenderWidgetHostViewQtDelegateQuick::onWindowPosChanged()
 {
-    if (window()) {
-        // TODO(pvarga): Use QQuickItem::mapToGlobal from Qt 5.7
-        m_lastGlobalPos = window()->mapToGlobal(position().toPoint());
-    }
+    if (window())
+        m_lastGlobalPos = QQuickItem::mapToGlobal(position());
     m_client->windowBoundsChanged();
 }
 
@@ -365,6 +380,17 @@ void RenderWidgetHostViewQtDelegateQuick::onHide()
 {
     QFocusEvent event(QEvent::FocusOut, Qt::OtherFocusReason);
     m_client->forwardEvent(&event);
+}
+
+bool RenderWidgetHostViewQtDelegateQuick::copySurface(const QRect &rect, const QSize &size, QImage &image)
+{
+    image = QQuickItem::window()->grabWindow();
+    if (image.isNull())
+        return false;
+    QRect subrect = !rect.isEmpty() ? rect : image.rect();
+    image = image.copy(subrect);
+    image = image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    return true;
 }
 
 } // namespace QtWebEngineCore

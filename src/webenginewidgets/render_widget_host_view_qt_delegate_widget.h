@@ -1,7 +1,7 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Contact: http://www.qt.io/licensing/
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the QtWebEngine module of the Qt Toolkit.
 **
@@ -11,24 +11,27 @@
 ** accordance with the commercial license agreement provided with the
 ** Software or, alternatively, in accordance with the terms contained in
 ** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see http://www.qt.io/terms-conditions. For further
-** information use the contact form at http://www.qt.io/contact-us.
+** and conditions see https://www.qt.io/terms-conditions. For further
+** information use the contact form at https://www.qt.io/contact-us.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
 ** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPLv3 included in the
+** Foundation and appearing in the file LICENSE.LGPL3 included in the
 ** packaging of this file. Please review the following information to
 ** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl.html.
+** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
 **
 ** GNU General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or later as published by the Free
-** Software Foundation and appearing in the file LICENSE.GPL included in
-** the packaging of this file. Please review the following information to
-** ensure the GNU General Public License version 2.0 requirements will be
-** met: http://www.gnu.org/licenses/gpl-2.0.html.
+** General Public License version 2.0 or (at your option) the GNU General
+** Public license version 3 or any later version approved by the KDE Free
+** Qt Foundation. The licenses are as published by the Free Software
+** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+** included in the packaging of this file. Please review the following
+** information to ensure the GNU General Public License requirements will
+** be met: https://www.gnu.org/licenses/gpl-2.0.html and
+** https://www.gnu.org/licenses/gpl-3.0.html.
 **
 ** $QT_END_LICENSE$
 **
@@ -40,70 +43,79 @@
 #include "render_widget_host_view_qt_delegate.h"
 #include "web_contents_adapter_client.h"
 
-#include <QSGAbstractRenderer>
-#include <QSGEngine>
-#include <QSGNode>
+#include <QQuickItem>
+#include <QQuickWidget>
 
-#if (QT_VERSION < QT_VERSION_CHECK(5, 4, 0))
-#include <QtWidgets/private/qopenglwidget_p.h>
-#else
-#include <QtWidgets/QOpenGLWidget>
-#endif
+QT_BEGIN_NAMESPACE
+class QWebEnginePage;
+class QWebEnginePagePrivate;
+QT_END_NAMESPACE
 
 namespace QtWebEngineCore {
 
-class RenderWidgetHostViewQtDelegateWidget : public QOpenGLWidget, public RenderWidgetHostViewQtDelegate {
+// Useful information keyboard and mouse QEvent propagation.
+// A RenderWidgetHostViewQtDelegateWidget instance initialized as a popup will receive
+// no keyboard focus (so all keyboard QEvents will be sent to the parent RWHVQD instance),
+// but will still receive mouse input (all mouse QEvent moves and clicks will be given to the popup
+// RWHVQD instance, and the mouse interaction area covers the surface of the whole parent
+// QWebEngineView, and not only the smaller surface that an HTML select popup would occupy).
+class RenderWidgetHostViewQtDelegateWidget : public QQuickWidget, public RenderWidgetHostViewQtDelegate {
     Q_OBJECT
 public:
     RenderWidgetHostViewQtDelegateWidget(RenderWidgetHostViewQtDelegateClient *client, QWidget *parent = 0);
+    ~RenderWidgetHostViewQtDelegateWidget();
 
-    virtual void initAsChild(WebContentsAdapterClient* container) Q_DECL_OVERRIDE;
-    virtual void initAsPopup(const QRect&) Q_DECL_OVERRIDE;
-    virtual QRectF screenRect() const Q_DECL_OVERRIDE;
-    virtual QRectF contentsRect() const Q_DECL_OVERRIDE;
-    virtual void setKeyboardFocus() Q_DECL_OVERRIDE;
-    virtual bool hasKeyboardFocus() Q_DECL_OVERRIDE;
-    virtual void lockMouse() Q_DECL_OVERRIDE;
-    virtual void unlockMouse() Q_DECL_OVERRIDE;
-    virtual void show() Q_DECL_OVERRIDE;
-    virtual void hide() Q_DECL_OVERRIDE;
-    virtual bool isVisible() const Q_DECL_OVERRIDE;
-    virtual QWindow* window() const Q_DECL_OVERRIDE;
-    virtual QSGTexture *createTextureFromImage(const QImage &) Q_DECL_OVERRIDE;
-    virtual QSGLayer *createLayer() Q_DECL_OVERRIDE;
-    virtual QSGImageNode *createImageNode() Q_DECL_OVERRIDE;
-    virtual void update() Q_DECL_OVERRIDE;
-    virtual void updateCursor(const QCursor &) Q_DECL_OVERRIDE;
-    virtual void resize(int width, int height) Q_DECL_OVERRIDE;
-    virtual void move(const QPoint &screenPos) Q_DECL_OVERRIDE;
-    virtual void inputMethodStateChanged(bool editorVisible) Q_DECL_OVERRIDE;
-    virtual void setTooltip(const QString &tooltip) Q_DECL_OVERRIDE;
-    virtual void setClearColor(const QColor &color) Q_DECL_OVERRIDE;
+    void initAsChild(WebContentsAdapterClient* container) override;
+    void initAsPopup(const QRect&) override;
+    QRectF screenRect() const override;
+    QRectF contentsRect() const override;
+    void setKeyboardFocus() override;
+    bool hasKeyboardFocus() override;
+    void lockMouse() override;
+    void unlockMouse() override;
+    void show() override;
+    void hide() override;
+    bool isVisible() const override;
+    QWindow* window() const override;
+    QSGTexture *createTextureFromImage(const QImage &) override;
+    QSGLayer *createLayer() override;
+    QSGInternalImageNode *createInternalImageNode() override;
+    QSGImageNode *createImageNode() override;
+    QSGRectangleNode *createRectangleNode() override;
+    void update() override;
+    void updateCursor(const QCursor &) override;
+    void resize(int width, int height) override;
+    void move(const QPoint &screenPos) override;
+    void inputMethodStateChanged(bool editorVisible, bool passwordInput) override;
+    void setInputMethodHints(Qt::InputMethodHints) override;
+    void setClearColor(const QColor &color) override;
+    bool copySurface(const QRect &, const QSize &, QImage &) override;
 
 protected:
-    bool event(QEvent *event) Q_DECL_OVERRIDE;
-    void resizeEvent(QResizeEvent *resizeEvent) Q_DECL_OVERRIDE;
-    void showEvent(QShowEvent *) Q_DECL_OVERRIDE;
-    void hideEvent(QHideEvent *) Q_DECL_OVERRIDE;
-    void initializeGL() Q_DECL_OVERRIDE;
-    void paintGL() Q_DECL_OVERRIDE;
+    bool event(QEvent *event) override;
+    void resizeEvent(QResizeEvent *resizeEvent) override;
+    void showEvent(QShowEvent *) override;
+    void hideEvent(QHideEvent *) override;
+    void closeEvent(QCloseEvent *event) override;
 
-    QVariant inputMethodQuery(Qt::InputMethodQuery query) const Q_DECL_OVERRIDE;
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
 
 private slots:
     void onWindowPosChanged();
+    void connectRemoveParentBeforeParentDelete();
     void removeParentBeforeParentDelete();
 
 private:
+    friend QWebEnginePagePrivate;
+
     RenderWidgetHostViewQtDelegateClient *m_client;
-    // Put the root node first to make sure it gets destroyed after the SG renderer.
-    QScopedPointer<QSGRootNode> m_rootNode;
-    QScopedPointer<QSGEngine> m_sgEngine;
-    QScopedPointer<QSGAbstractRenderer> m_sgRenderer;
+    QScopedPointer<QQuickItem> m_rootItem;
     bool m_isPopup;
     QColor m_clearColor;
     QPoint m_lastGlobalPos;
     QList<QMetaObject::Connection> m_windowConnections;
+    QWebEnginePage *m_page = nullptr;
+    QMetaObject::Connection m_parentDestroyedConnection;
 };
 
 } // namespace QtWebEngineCore

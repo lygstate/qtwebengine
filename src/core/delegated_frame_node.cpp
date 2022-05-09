@@ -67,6 +67,8 @@
 #include "content/common/host_shared_bitmap_manager.h"
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
+#include <QSGImageNode>
+#include <QSGRectangleNode>
 #include <QSGSimpleRectNode>
 #include <QSGSimpleTextureNode>
 #include <QSGTexture>
@@ -667,8 +669,8 @@ void DelegatedFrameNode::commit(ChromiumCompositorData *chromiumCompositorData, 
                 if (!layer)
                     continue;
 
-                // Only QSGImageNode currently supports QSGLayer textures.
-                QSGImageNode *imageNode = apiDelegate->createImageNode();
+                // Only QSGInternalImageNode currently supports QSGLayer textures.
+                QSGInternalImageNode *imageNode = apiDelegate->createInternalImageNode();
                 imageNode->setTargetRect(toQt(quad->rect));
                 imageNode->setInnerTargetRect(toQt(quad->rect));
                 imageNode->setTexture(layer);
@@ -678,17 +680,27 @@ void DelegatedFrameNode::commit(ChromiumCompositorData *chromiumCompositorData, 
             } case cc::DrawQuad::TEXTURE_CONTENT: {
                 const cc::TextureDrawQuad *tquad = cc::TextureDrawQuad::MaterialCast(quad);
                 ResourceHolder *resource = findAndHoldResource(tquad->resource_id(), resourceCandidates);
-
-                QSGSimpleTextureNode *textureNode = new QSGSimpleTextureNode;
-                textureNode->setTextureCoordinatesTransform(tquad->y_flipped ? QSGSimpleTextureNode::MirrorVertically : QSGSimpleTextureNode::NoTransform);
+                QSGTexture *texture =
+                    initAndHoldTexture(resource, quad->ShouldDrawWithBlending(), apiDelegate);
+                auto texCoordTransForm = tquad->y_flipped ? QSGImageNode::MirrorVertically : QSGImageNode::NoTransform;
+                QSizeF textureSize;
+                if (texture)
+                    textureSize = texture->textureSize();
+                gfx::RectF uv_rect =
+                    gfx::ScaleRect(gfx::BoundingRect(tquad->uv_top_left, tquad->uv_bottom_right),
+                           textureSize.width(), textureSize.height());
+                auto sourceRect = toQt(uv_rect);
+                QSGImageNode *textureNode = apiDelegate->createImageNode();
+                textureNode->setTextureCoordinatesTransform(texCoordTransForm);
                 textureNode->setRect(toQt(quad->rect));
-                textureNode->setFiltering(resource->transferableResource().filter == GL_LINEAR ? QSGTexture::Linear : QSGTexture::Nearest);
-                textureNode->setTexture(initAndHoldTexture(resource, quad->ShouldDrawWithBlending(), apiDelegate));
+                textureNode->setSourceRect(sourceRect);
+                textureNode->setTexture(texture);
+                textureNode->setFiltering(texture->filtering());
                 currentLayerChain->appendChildNode(textureNode);
                 break;
             } case cc::DrawQuad::SOLID_COLOR: {
                 const cc::SolidColorDrawQuad *scquad = cc::SolidColorDrawQuad::MaterialCast(quad);
-                QSGSimpleRectNode *rectangleNode = new QSGSimpleRectNode;
+                QSGRectangleNode *rectangleNode = apiDelegate->createRectangleNode();
 
                 // Qt only supports MSAA and this flag shouldn't be needed.
                 // If we ever want to use QSGRectangleNode::setAntialiasing for this we should

@@ -113,6 +113,7 @@ MenuItemHandler::MenuItemHandler(QObject *parent)
 
 UIDelegatesManager::UIDelegatesManager(QQuickWebEngineView *view)
     : m_view(view)
+    , m_toolTip(nullptr)
     , m_messageBubbleItem(0)
     FOR_EACH_COMPONENT_TYPE(COMPONENT_MEMBER_INIT, NO_SEPARATOR)
 {
@@ -417,6 +418,65 @@ void UIDelegatesManager::showFilePicker(FilePickerController *controller)
     QObject::connect(filePicker, rejectSignal.method(), filePicker, filePicker->metaObject()->method(deleteLaterIndex));
 
     QMetaObject::invokeMethod(filePicker, "open");
+}
+
+static QPoint calculateToolTipPosition(QPoint &position, QSize &toolTip) {
+    QRect screen;
+    const QList<QScreen *> screens = QGuiApplication::screens();
+    for (const QScreen *src : screens)
+        if (src->availableGeometry().contains(position))
+            screen = src->availableGeometry();
+
+    position += QPoint(2, 16);
+
+    if (position.x() + toolTip.width() > screen.x() + screen.width())
+        position.rx() -= 4 + toolTip.width();
+    if (position.y() + toolTip.height() > screen.y() + screen.height())
+        position.ry() -= 24 + toolTip.height();
+    if (position.y() < screen.y())
+        position.setY(screen.y());
+    if (position.x() + toolTip.width() > screen.x() + screen.width())
+        position.setX(screen.x() + screen.width() - toolTip.width());
+    if (position.x() < screen.x())
+        position.setX(screen.x());
+    if (position.y() + toolTip.height() > screen.y() + screen.height())
+        position.setY(screen.y() + screen.height() - toolTip.height());
+
+    return position;
+}
+
+void UIDelegatesManager::showToolTip(const QString &text)
+{
+    if (!ensureComponentLoaded(ToolTip))
+        return;
+
+    if (text.isEmpty()) {
+        m_toolTip.reset();
+        return;
+    }
+
+    if (!m_toolTip.isNull())
+        return;
+
+    QQmlContext *context = qmlContext(m_view);
+    m_toolTip.reset(toolTipComponent->beginCreate(context));
+    if (QQuickItem *item = qobject_cast<QQuickItem *>(m_toolTip.data()))
+        item->setParentItem(m_view);
+    m_toolTip->setParent(m_view);
+    toolTipComponent->completeCreate();
+
+    QQmlProperty(m_toolTip.data(), QStringLiteral("text")).write(text);
+
+    int height = QQmlProperty(m_toolTip.data(), QStringLiteral("height")).read().toInt();
+    int width = QQmlProperty(m_toolTip.data(), QStringLiteral("width")).read().toInt();
+    QSize toolTipSize(width, height);
+    QPoint position = m_view->cursor().pos();
+    position = m_view->mapFromGlobal(calculateToolTipPosition(position, toolTipSize)).toPoint();
+
+    QQmlProperty(m_toolTip.data(), QStringLiteral("x")).write(position.x());
+    QQmlProperty(m_toolTip.data(), QStringLiteral("y")).write(position.y());
+
+    QMetaObject::invokeMethod(m_toolTip.data(), "open");
 }
 
 void UIDelegatesManager::showMessageBubble(const QRect &anchor, const QString &mainText, const QString &subText)

@@ -583,7 +583,7 @@ void RenderWidgetHostViewQt::TextInputTypeChanged(ui::TextInputType type, ui::Te
     Q_UNUSED(can_compose_inline);
     Q_UNUSED(flags);
     m_currentInputType = type;
-    m_delegate->inputMethodStateChanged(static_cast<bool>(type));
+    m_delegate->inputMethodStateChanged(static_cast<bool>(type), type == ui::TEXT_INPUT_TYPE_PASSWORD);
 }
 
 void RenderWidgetHostViewQt::ImeCancelComposition()
@@ -612,7 +612,8 @@ void RenderWidgetHostViewQt::Destroy()
 
 void RenderWidgetHostViewQt::SetTooltipText(const base::string16 &tooltip_text)
 {
-    m_delegate->setTooltip(toQt(tooltip_text));
+    if (m_adapterClient)
+        m_adapterClient->setToolTip(toQt(tooltip_text));
 }
 
 void RenderWidgetHostViewQt::SelectionBoundsChanged(const ViewHostMsg_SelectionBounds_Params &params)
@@ -814,7 +815,7 @@ bool RenderWidgetHostViewQt::forwardEvent(QEvent *event)
     return true;
 }
 
-QVariant RenderWidgetHostViewQt::inputMethodQuery(Qt::InputMethodQuery query) const
+QVariant RenderWidgetHostViewQt::inputMethodQuery(Qt::InputMethodQuery query)
 {
     switch (query) {
     case Qt::ImEnabled:
@@ -838,6 +839,15 @@ QVariant RenderWidgetHostViewQt::inputMethodQuery(Qt::InputMethodQuery query) co
     default:
         return QVariant();
     }
+}
+
+void RenderWidgetHostViewQt::closePopup()
+{
+    // We notify the popup to be closed by telling it that it lost focus. WebKit does the rest
+    // (hiding the widget and automatic memory cleanup via
+    // RenderWidget::CloseWidgetSoon() -> RenderWidgetHostImpl::ShutdownAndDestroyWidget(true).
+    m_host->SetActive(false);
+    m_host->Blur();
 }
 
 void RenderWidgetHostViewQt::ProcessAckedTouchEvent(const content::TouchEventWithLatencyInfo &touch, content::InputEventAckState ack_result) {

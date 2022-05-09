@@ -84,6 +84,8 @@ QT_BEGIN_NAMESPACE
 
 using namespace QtWebEngineCore;
 
+static const int MaxTooltipLength = 1024;
+
 static QWebEnginePage::WebWindowType toWindowType(WebContentsAdapterClient::WindowOpenDisposition disposition)
 {
     switch (disposition) {
@@ -1161,6 +1163,27 @@ bool QWebEnginePagePrivate::isEnabled() const
     if (view)
         return view->isEnabled();
     return true;
+}
+
+void QWebEnginePagePrivate::setToolTip(const QString &toolTipText)
+{
+    if (!view)
+        return;
+
+    // Hide tooltip if shown.
+    if (toolTipText.isEmpty()) {
+        if (!view->toolTip().isEmpty())
+            view->setToolTip(QString());
+
+        return;
+    }
+
+    // Update tooltip if text was changed.
+    QString wrappedTip = QLatin1String("<p style=\"white-space:pre-wrap\">")
+            % toolTipText.toHtmlEscaped().left(MaxTooltipLength)
+            % QLatin1String("</p>");
+    if (view->toolTip() != wrappedTip)
+        view->setToolTip(wrappedTip);
 }
 
 QMenu *QWebEnginePage::createStandardContextMenu()
