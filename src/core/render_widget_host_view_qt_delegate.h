@@ -46,7 +46,7 @@ QT_BEGIN_NAMESPACE
 class QCursor;
 class QEvent;
 class QPainter;
-class QSGImageNode;
+class QSGInternalImageNode;
 class QSGLayer;
 class QSGNode;
 class QSGTexture;
@@ -89,7 +89,7 @@ public:
     virtual QWindow* window() const = 0;
     virtual QSGTexture *createTextureFromImage(const QImage &) = 0;
     virtual QSGLayer *createLayer() = 0;
-    virtual QSGImageNode *createImageNode() = 0;
+    virtual QSGInternalImageNode *createImageNode() = 0;
     virtual void update() = 0;
     virtual void updateCursor(const QCursor &) = 0;
     virtual void resize(int width, int height) = 0;

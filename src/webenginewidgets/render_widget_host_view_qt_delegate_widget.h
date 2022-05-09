@@ -40,19 +40,12 @@
 #include "render_widget_host_view_qt_delegate.h"
 #include "web_contents_adapter_client.h"
 
-#include <QSGAbstractRenderer>
-#include <QSGEngine>
-#include <QSGNode>
-
-#if (QT_VERSION < QT_VERSION_CHECK(5, 4, 0))
-#include <QtWidgets/private/qopenglwidget_p.h>
-#else
-#include <QtWidgets/QOpenGLWidget>
-#endif
+#include <QQuickItem>
+#include <QQuickWidget>
 
 namespace QtWebEngineCore {
 
-class RenderWidgetHostViewQtDelegateWidget : public QOpenGLWidget, public RenderWidgetHostViewQtDelegate {
+class RenderWidgetHostViewQtDelegateWidget : public QQuickWidget, public RenderWidgetHostViewQtDelegate {
     Q_OBJECT
 public:
     RenderWidgetHostViewQtDelegateWidget(RenderWidgetHostViewQtDelegateClient *client, QWidget *parent = 0);
@@ -71,7 +64,7 @@ public:
     virtual QWindow* window() const Q_DECL_OVERRIDE;
     virtual QSGTexture *createTextureFromImage(const QImage &) Q_DECL_OVERRIDE;
     virtual QSGLayer *createLayer() Q_DECL_OVERRIDE;
-    virtual QSGImageNode *createImageNode() Q_DECL_OVERRIDE;
+    virtual QSGInternalImageNode *createImageNode() Q_DECL_OVERRIDE;
     virtual void update() Q_DECL_OVERRIDE;
     virtual void updateCursor(const QCursor &) Q_DECL_OVERRIDE;
     virtual void resize(int width, int height) Q_DECL_OVERRIDE;
@@ -85,8 +78,6 @@ protected:
     void resizeEvent(QResizeEvent *resizeEvent) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *) Q_DECL_OVERRIDE;
-    void initializeGL() Q_DECL_OVERRIDE;
-    void paintGL() Q_DECL_OVERRIDE;
 
     QVariant inputMethodQuery(Qt::InputMethodQuery query) const Q_DECL_OVERRIDE;
 
@@ -96,10 +87,7 @@ private slots:
 
 private:
     RenderWidgetHostViewQtDelegateClient *m_client;
-    // Put the root node first to make sure it gets destroyed after the SG renderer.
-    QScopedPointer<QSGRootNode> m_rootNode;
-    QScopedPointer<QSGEngine> m_sgEngine;
-    QScopedPointer<QSGAbstractRenderer> m_sgRenderer;
+    QScopedPointer<QQuickItem> m_rootItem;
     bool m_isPopup;
     QColor m_clearColor;
     QPoint m_lastGlobalPos;

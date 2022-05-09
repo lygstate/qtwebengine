@@ -67,6 +67,8 @@
 #include "content/common/host_shared_bitmap_manager.h"
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
+#include <QSGImageNode>
+#include <QSGRectangleNode>
 #include <QSGSimpleRectNode>
 #include <QSGSimpleTextureNode>
 #include <QSGTexture>
@@ -667,8 +669,8 @@ void DelegatedFrameNode::commit(ChromiumCompositorData *chromiumCompositorData, 
                 if (!layer)
                     continue;
 
-                // Only QSGImageNode currently supports QSGLayer textures.
-                QSGImageNode *imageNode = apiDelegate->createImageNode();
+                // Only QSGInternalImageNode currently supports QSGLayer textures.
+                QSGInternalImageNode *imageNode = apiDelegate->createImageNode();
                 imageNode->setTargetRect(toQt(quad->rect));
                 imageNode->setInnerTargetRect(toQt(quad->rect));
                 imageNode->setTexture(layer);

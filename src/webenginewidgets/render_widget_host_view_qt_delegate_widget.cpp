@@ -46,21 +46,64 @@
 #include <QSGAbstractRenderer>
 #include <QSGNode>
 #include <QWindow>
-#include <private/qsgcontext_p.h>
-#include <private/qsgengine_p.h>
+#include <private/qquickwindow_p.h>
 #include <private/qwidget_p.h>
 
 namespace QtWebEngineCore {
 
 static const int MaxTooltipLength = 1024;
 
+class RenderWidgetHostViewQuickItem : public QQuickItem {
+public:
+    RenderWidgetHostViewQuickItem(RenderWidgetHostViewQtDelegateClient *client) : m_client(client)
+    {
+        setFlag(ItemHasContents, true);
+        // Mark that this item should receive focus when the parent QQuickWidget receives focus.
+        setFocus(true);
+    }
+protected:
+    bool event(QEvent *event) override
+    {
+        return QQuickItem::event(event);
+    }
+    void focusInEvent(QFocusEvent *event) override
+    {
+        m_client->forwardEvent(event);
+    }
+    void focusOutEvent(QFocusEvent *event) override
+    {
+        m_client->forwardEvent(event);
+    }
+    void keyPressEvent(QKeyEvent *event) override
+    {
+        m_client->forwardEvent(event);
+    }
+    void keyReleaseEvent(QKeyEvent *event) override
+    {
+        m_client->forwardEvent(event);
+    }
+    void inputMethodEvent(QInputMethodEvent *event) override
+    {
+        m_client->forwardEvent(event);
+    }
+    QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override
+    {
+        return m_client->updatePaintNode(oldNode);
+    }
+
+    QVariant inputMethodQuery(Qt::InputMethodQuery query) const override
+    {
+        return m_client->inputMethodQuery(query);
+    }
+private:
+    RenderWidgetHostViewQtDelegateClient *m_client;
+};
+
 RenderWidgetHostViewQtDelegateWidget::RenderWidgetHostViewQtDelegateWidget(RenderWidgetHostViewQtDelegateClient *client, QWidget *parent)
-    : QOpenGLWidget(parent)
+    : QQuickWidget(parent)
     , m_client(client)
-    , m_rootNode(new QSGRootNode)
-    , m_sgEngine(new QSGEngine)
+    , m_rootItem(new RenderWidgetHostViewQuickItem(client))
     , m_isPopup(false)
-    , m_clearColor(Qt::white)
 {
     setFocusPolicy(Qt::StrongFocus);
 
@@ -70,6 +113,7 @@ RenderWidgetHostViewQtDelegateWidget::RenderWidgetHostViewQtDelegateWidget(Rende
     format.setDepthBufferSize(24);
     format.setStencilBufferSize(8);
 
+#ifndef QT_NO_OPENGL
     QOpenGLContext *globalSharedContext = QOpenGLContext::globalShareContext();
     if (globalSharedContext) {
         QSurfaceFormat sharedFormat = globalSharedContext->format();
@@ -88,7 +132,7 @@ RenderWidgetHostViewQtDelegateWidget::RenderWidgetHostViewQtDelegateWidget(Rende
         }
 #endif
 
-        // Make sure the OpenGL profile of the QOpenGLWidget matches the shared context profile.
+        // Make sure the OpenGL profile of the QQuickWidget matches the shared context profile.
         if (sharedFormat.profile() == QSurfaceFormat::CoreProfile) {
             format.setMajorVersion(sharedFormat.majorVersion());
             format.setMinorVersion(sharedFormat.minorVersion());
@@ -98,7 +142,7 @@ RenderWidgetHostViewQtDelegateWidget::RenderWidgetHostViewQtDelegateWidget(Rende
 
     setFormat(format);
 #endif
-
+#endif
     setMouseTracking(true);
     setAttribute(Qt::WA_AcceptTouchEvents);
     setAttribute(Qt::WA_OpaquePaintEvent);
@@ -117,13 +161,25 @@ RenderWidgetHostViewQtDelegateWidget::RenderWidgetHostViewQtDelegateWidget(Rende
 
 void RenderWidgetHostViewQtDelegateWidget::removeParentBeforeParentDelete()
 {
+    // Unset the parent, because parent is being destroyed, but the owner of this
+    // RenderWidgetHostViewQtDelegateWidget is actually a RenderWidgetHostViewQt instance.
     setParent(Q_NULLPTR);
+
+    // If this widget represents a popup window, make sure to close it, so that if the popup was the
+    // last visible top level window, the application event loop can quit if it deems it necessarry.
+    if (m_isPopup)
+        close();
 }
 
 void RenderWidgetHostViewQtDelegateWidget::initAsChild(WebContentsAdapterClient* container)
 {
+    setContent(QUrl(), nullptr, m_rootItem.data());
+
     QWebEnginePagePrivate *pagePrivate = static_cast<QWebEnginePagePrivate *>(container);
     if (pagePrivate->view) {
+        if (parentWidget())
+            disconnect(parentWidget(), &QObject::destroyed,
+                this, &RenderWidgetHostViewQtDelegateWidget::removeParentBeforeParentDelete);
         pagePrivate->view->layout()->addWidget(this);
         pagePrivate->view->setFocusProxy(this);
         show();
@@ -134,6 +190,8 @@ void RenderWidgetHostViewQtDelegateWidget::initAsChild(WebContentsAdapterClient*
 void RenderWidgetHostViewQtDelegateWidget::initAsPopup(const QRect& screenRect)
 {
     m_isPopup = true;
+    setContent(QUrl(), nullptr, m_rootItem.data());
+
     // The keyboard events are supposed to go to the parent RenderHostView
     // so the WebUI popups should never have focus. Besides, if the parent view
     // loses focus, WebKit will cause its associated popups (including this one)
@@ -141,10 +199,14 @@ void RenderWidgetHostViewQtDelegateWidget::initAsPopup(const QRect& screenRect)
     setAttribute(Qt::WA_ShowWithoutActivating);
     setFocusPolicy(Qt::NoFocus);
 
+#ifdef Q_OS_MACOS
     // macOS doesn't like Qt::ToolTip when QWebEngineView is inside a modal dialog, specifically by
     // not forwarding click events to the popup. So we use Qt::Tool which behaves the same way, but
     // works on macOS too.
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+#else
+    setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+#endif
 
     setGeometry(screenRect);
     show();
@@ -163,12 +225,19 @@ QRectF RenderWidgetHostViewQtDelegateWidget::contentsRect() const
 
 void RenderWidgetHostViewQtDelegateWidget::setKeyboardFocus()
 {
-    setFocus();
+    // If the corresponding window is inactive (for example, because of a popup),
+    // the active focus cannot be set. Sync up with the Window System to try to
+    // reactivate the window in time if the other window (possibly popup) which took
+    // the focus is already closed.
+    if (window() && !window()->isActive())
+        QGuiApplication::sync();
+
+    m_rootItem->forceActiveFocus();
 }
 
 bool RenderWidgetHostViewQtDelegateWidget::hasKeyboardFocus()
 {
-    return hasFocus();
+    return m_rootItem->hasActiveFocus();
 }
 
 void RenderWidgetHostViewQtDelegateWidget::lockMouse()
@@ -186,65 +255,66 @@ void RenderWidgetHostViewQtDelegateWidget::show()
     // Check if we're attached to a QWebEngineView, we don't
     // want to show anything else than popups as top-level.
     if (parent() || m_isPopup) {
-        QOpenGLWidget::show();
+        QQuickWidget::show();
     }
 }
 
 void RenderWidgetHostViewQtDelegateWidget::hide()
 {
-    QOpenGLWidget::hide();
+    QQuickWidget::hide();
 }
 
 bool RenderWidgetHostViewQtDelegateWidget::isVisible() const
 {
-    return QOpenGLWidget::isVisible();
+    return QQuickWidget::isVisible();
 }
 
 QWindow* RenderWidgetHostViewQtDelegateWidget::window() const
 {
-    const QWidget* root = QOpenGLWidget::window();
+    const QWidget* root = QQuickWidget::window();
     return root ? root->windowHandle() : 0;
 }
 
 QSGTexture *RenderWidgetHostViewQtDelegateWidget::createTextureFromImage(const QImage &image)
 {
-    return m_sgEngine->createTextureFromImage(image, QSGEngine::TextureCanUseAtlas);
+    return quickWindow()->createTextureFromImage(image, QQuickWindow::TextureCanUseAtlas);
 }
 
 QSGLayer *RenderWidgetHostViewQtDelegateWidget::createLayer()
 {
-    QSGEnginePrivate *enginePrivate = QSGEnginePrivate::get(m_sgEngine.data());
-    return enginePrivate->sgContext->createLayer(enginePrivate->sgRenderContext.data());
+    QSGRenderContext *renderContext = QQuickWindowPrivate::get(quickWindow())->context;
+    return renderContext->sceneGraphContext()->createLayer(renderContext);
 }
 
-QSGImageNode *RenderWidgetHostViewQtDelegateWidget::createImageNode()
+QSGInternalImageNode *RenderWidgetHostViewQtDelegateWidget::createImageNode()
 {
-    return QSGEnginePrivate::get(m_sgEngine.data())->sgContext->createImageNode();
+    QSGRenderContext *renderContext = QQuickWindowPrivate::get(quickWindow())->context;
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 8, 0))
+    return renderContext->sceneGraphContext()->createInternalImageNode();
+#else
+    return renderContext->sceneGraphContext()->createImageNode();
+#endif
 }
 
 void RenderWidgetHostViewQtDelegateWidget::update()
 {
-#if (QT_VERSION < QT_VERSION_CHECK(5, 4, 0))
-    updateGL();
-#else
-    QOpenGLWidget::update();
-#endif
+    m_rootItem->update();
 }
 
 void RenderWidgetHostViewQtDelegateWidget::updateCursor(const QCursor &cursor)
 {
-    QOpenGLWidget::setCursor(cursor);
+    QQuickWidget::setCursor(cursor);
 }
 
 void RenderWidgetHostViewQtDelegateWidget::resize(int width, int height)
 {
-    QOpenGLWidget::resize(width, height);
+    QQuickWidget::resize(width, height);
 }
 
 void RenderWidgetHostViewQtDelegateWidget::move(const QPoint &screenPos)
 {
     Q_ASSERT(m_isPopup);
-    QOpenGLWidget::move(screenPos);
+    QQuickWidget::move(screenPos);
 }
 
 void RenderWidgetHostViewQtDelegateWidget::inputMethodStateChanged(bool editorVisible)
@@ -252,7 +322,7 @@ void RenderWidgetHostViewQtDelegateWidget::inputMethodStateChanged(bool editorVi
     if (qApp->inputMethod()->isVisible() == editorVisible)
         return;
 
-    QOpenGLWidget::setAttribute(Qt::WA_InputMethodEnabled, editorVisible);
+    QQuickWidget::setAttribute(Qt::WA_InputMethodEnabled, editorVisible);
     qApp->inputMethod()->update(Qt::ImQueryInput | Qt::ImEnabled | Qt::ImHints);
     qApp->inputMethod()->setVisible(editorVisible);
 }
@@ -267,8 +337,8 @@ void RenderWidgetHostViewQtDelegateWidget::setTooltip(const QString &tooltip)
 
 void RenderWidgetHostViewQtDelegateWidget::setClearColor(const QColor &color)
 {
-    m_clearColor = color;
-    // QOpenGLWidget is usually blended by punching holes into widgets
+    QQuickWidget::setClearColor(color);
+    // QQuickWidget is usually blended by punching holes into widgets
     // above it to simulate the visual stacking order. If we want it to be
     // transparent we have to throw away the proper stacking order and always
     // blend the complete normal widgets backing store under it.
@@ -285,7 +355,7 @@ QVariant RenderWidgetHostViewQtDelegateWidget::inputMethodQuery(Qt::InputMethodQ
 
 void RenderWidgetHostViewQtDelegateWidget::resizeEvent(QResizeEvent *resizeEvent)
 {
-    QOpenGLWidget::resizeEvent(resizeEvent);
+    QQuickWidget::resizeEvent(resizeEvent);
 
     const QPoint globalPos = mapToGlobal(pos());
     if (globalPos != m_lastGlobalPos) {
@@ -298,7 +368,7 @@ void RenderWidgetHostViewQtDelegateWidget::resizeEvent(QResizeEvent *resizeEvent
 
 void RenderWidgetHostViewQtDelegateWidget::showEvent(QShowEvent *event)
 {
-    QOpenGLWidget::showEvent(event);
+    QQuickWidget::showEvent(event);
     // We don't have a way to catch a top-level window change with QWidget
     // but a widget will most likely be shown again if it changes, so do
     // the reconnection at this point.
@@ -315,7 +385,7 @@ void RenderWidgetHostViewQtDelegateWidget::showEvent(QShowEvent *event)
 
 void RenderWidgetHostViewQtDelegateWidget::hideEvent(QHideEvent *event)
 {
-    QOpenGLWidget::hideEvent(event);
+    QQuickWidget::hideEvent(event);
     m_client->notifyHidden();
 }
 
@@ -350,11 +420,28 @@ bool RenderWidgetHostViewQtDelegateWidget::event(QEvent *event)
         }
     }
 
-    if (event->type() == QEvent::ShortcutOverride) {
+    switch (event->type()) {
+    case QEvent::FocusIn:
+    case QEvent::FocusOut:
+        // We forward focus events later, once they have made it to the m_rootItem.
+        return QQuickWidget::event(event);
+    case QEvent::ShortcutOverride:
         if (editorActionForKeyEvent(static_cast<QKeyEvent*>(event)) != QWebEnginePage::NoWebAction) {
             event->accept();
             return true;
         }
+        break;
+    case QEvent::DragEnter:
+    case QEvent::DragLeave:
+    case QEvent::DragMove:
+    case QEvent::Drop:
+    case QEvent::HoverEnter:
+    case QEvent::HoverLeave:
+    case QEvent::HoverMove:
+        // Let the parent handle these events.
+        return false;
+    default:
+        break;
     }
 
     QEvent::Type type = event->type();
@@ -376,43 +463,8 @@ bool RenderWidgetHostViewQtDelegateWidget::event(QEvent *event)
         handled = m_client->forwardEvent(event);
 
     if (!handled)
-        return QOpenGLWidget::event(event);
+        return QQuickWidget::event(event);
     return true;
-}
-
-void RenderWidgetHostViewQtDelegateWidget::initializeGL()
-{
-    m_sgEngine->initialize(QOpenGLContext::currentContext());
-    m_sgRenderer.reset(m_sgEngine->createRenderer());
-    m_sgRenderer->setRootNode(m_rootNode.data());
-    m_sgRenderer->setClearColor(m_clearColor);
-
-    // When RenderWidgetHostViewQt::GetScreenInfo is called for the first time, the associated
-    // QWindow is NULL, and the screen device pixel ratio can not be queried.
-    // Re-initialize the screen information after the QWindow handle is available,
-    // so Chromium receives the correct device pixel ratio.
-    m_client->windowChanged();
-}
-
-void RenderWidgetHostViewQtDelegateWidget::paintGL()
-{
-#if (QT_VERSION < QT_VERSION_CHECK(5, 3, 1))
-    // A workaround for a missing check in 5.3.0 when updating an unparented delegate.
-    if (!QOpenGLContext::currentContext())
-        return;
-#endif
-    QSGNode *paintNode = m_client->updatePaintNode(m_rootNode->firstChild());
-    if (paintNode != m_rootNode->firstChild()) {
-        delete m_rootNode->firstChild();
-        m_rootNode->appendChildNode(paintNode);
-    }
-
-    QSize deviceSize = size() * devicePixelRatio();
-    m_sgRenderer->setDeviceRect(deviceSize);
-    m_sgRenderer->setViewportRect(deviceSize);
-    m_sgRenderer->setProjectionMatrixToRect(QRectF(QPointF(), size()));
-
-    m_sgRenderer->renderScene(defaultFramebufferObject());
 }
 
 void RenderWidgetHostViewQtDelegateWidget::onWindowPosChanged()
