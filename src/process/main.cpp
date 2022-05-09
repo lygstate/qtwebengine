@@ -39,6 +39,10 @@
 #include <QCoreApplication>
 #include <stdio.h>
 
+#ifdef Q_OS_WIN
+#include <Windows.h>
+#endif
+
 #if defined(OS_LINUX)
 #if defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(OS_ANDROID) && !defined(HAVE_XSTAT)
 #define HAVE_XSTAT 1
@@ -154,6 +158,15 @@ int main(int argc, const char **argv)
 {
 #ifdef Q_OS_WIN
     initDpiAwareness();
+    while(!::IsDebuggerPresent()) {
+        if (_wgetenv(L"QTWEBENGINEPROCESS_WAIT_DEBUGGER_ATTACH") == NULL) {
+            break;
+        }
+        ::Sleep(100);
+    }
+    if (_wgetenv(L"QTWEBENGINEPROCESS_WAIT_DEBUGGER_ATTACH") != NULL) {
+        DebugBreak();
+    }
 #endif
 
     // QCoreApplication needs a non-const pointer, while the
