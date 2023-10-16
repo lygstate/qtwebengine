@@ -154,13 +154,22 @@ QString subProcessPath()
     return processPath;
 }
 
+QString subProcessDirPath()
+{
+    static QString processDirPath;
+    if (processDirPath.isEmpty()) {
+        processDirPath = QFileInfo(subProcessPath()).absoluteDir().absolutePath();
+    }
+    return processDirPath;
+}
+
 QString localesPath()
 {
 #if defined(OS_MACOSX) && defined(QT_MAC_FRAMEWORK_BUILD)
     return getResourcesPath(frameworkBundle()) % QLatin1String("/qtwebengine_locales");
 #else
     static bool initialized = false;
-    static QString potentialLocalesPath = QLibraryInfo::location(QLibraryInfo::TranslationsPath) % QDir::separator() % QLatin1String("qtwebengine_locales");
+    static QString potentialLocalesPath = subProcessDirPath() % QDir::separator() % QLatin1String("translations") % QDir::separator() % QLatin1String("qtwebengine_locales");
 
     if (!initialized) {
         initialized = true;
@@ -184,7 +193,7 @@ QString icuDataPath()
     return getResourcesPath(frameworkBundle());
 #else
     static bool initialized = false;
-    static QString potentialResourcesPath = QLibraryInfo::location(QLibraryInfo::DataPath) % QLatin1String("/resources");
+    static QString potentialResourcesPath = subProcessDirPath() % QLatin1String("/resources");
     if (!initialized) {
         initialized = true;
         if (!QFileInfo::exists(potentialResourcesPath % QLatin1String("/icudtl.dat"))) {
@@ -211,7 +220,7 @@ QString resourcesDataPath()
     return getResourcesPath(frameworkBundle());
 #else
     static bool initialized = false;
-    static QString potentialResourcesPath = QLibraryInfo::location(QLibraryInfo::DataPath) % QLatin1String("/resources");
+    static QString potentialResourcesPath = subProcessDirPath() % QLatin1String("/resources");
     if (!initialized) {
         initialized = true;
         if (!QFileInfo::exists(potentialResourcesPath % QLatin1String("/qtwebengine_resources.pak"))) {
