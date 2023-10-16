@@ -56,6 +56,10 @@
 #include <QStandardPaths>
 #include <QString>
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #ifndef QTWEBENGINEPROCESS_NAME
 #error "No name defined for QtWebEngine's process"
 #endif
@@ -112,6 +116,77 @@ static QString getResourcesPath(CFBundleRef frameworkBundle)
 }
 #endif
 
+#if defined(_WIN32)
+static char *wchar_to_utf8(
+    const wchar_t *src,
+    size_t src_length, /* = 0 */
+    size_t *out_length /* = NULL */
+)
+{
+    int length;
+    char *output_buffer;
+    if (!src)
+    {
+        return NULL;
+    }
+
+    if (src_length == 0)
+    {
+        src_length = wcslen(src);
+    }
+    length = WideCharToMultiByte(CP_UTF8, 0, src, src_length,
+                                     0, 0, NULL, NULL);
+    output_buffer = (char *)malloc((length + 1) * sizeof(char));
+    if (output_buffer)
+    {
+        WideCharToMultiByte(CP_UTF8, 0, src, src_length,
+                            output_buffer, length, NULL, NULL);
+        output_buffer[length] = '\0';
+    }
+    if (out_length)
+    {
+        *out_length = length;
+    }
+    return output_buffer;
+}
+#endif
+
+static void getModuleFullpathForFunction(const void *function_pointer, char **utf8_str_ptr)
+{
+#if defined(_WIN32)
+    HMODULE hm = NULL;
+    DWORD moduleFlags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+    if (GetModuleHandleExW(moduleFlags, (LPCWSTR)function_pointer, &hm) == 0)
+    {
+        *utf8_str_ptr = strdup("");
+    }
+    else
+    {
+        DWORD size = MAX_PATH + 1;
+        wchar_t *space = (wchar_t *)malloc(sizeof(wchar_t) * size);
+        DWORD v;
+        for (;;)
+        {
+            v = GetModuleFileNameW(hm, space, size);
+            if (v >= size)
+            {
+                size += MAX_PATH;
+                space = (wchar_t *)realloc(space, sizeof(wchar_t) * size);
+                continue;
+            }
+            break;
+        }
+        *utf8_str_ptr = wchar_to_utf8(space, v, NULL);
+        free(space);
+    }
+#else
+    Dl_info info;
+    dladdr(function_pointer, &info);
+    *utf8_str_ptr = strdup(info.dli_fname);
+#endif
+}
+
 QString subProcessPath()
 {
     static QString processPath;
@@ -128,6 +203,17 @@ QString subProcessPath()
             // Only search in QTWEBENGINEPROCESS_PATH if set
             candidatePaths << QString::fromLocal8Bit(fromEnv);
         } else {
+#if defined(OS_WIN)
+            {
+                char *webengineCorePath = NULL;
+                getModuleFullpathForFunction(&subProcessPath, &webengineCorePath);
+                if (webengineCorePath != NULL) {
+                    QString processDirPath = QFileInfo(QString::fromUtf8(webengineCorePath)).absoluteDir().absolutePath();
+                    candidatePaths << processDirPath % QLatin1Char('/') % processBinary;
+                    free(webengineCorePath);
+                }
+            }
+#endif
 #if defined(OS_MACOSX) && defined(QT_MAC_FRAMEWORK_BUILD)
             candidatePaths << getPath(frameworkBundle())
                               % QStringLiteral("/Helpers/" QTWEBENGINEPROCESS_NAME ".app/Contents/MacOS/" QTWEBENGINEPROCESS_NAME);
@@ -154,6 +240,15 @@ QString subProcessPath()
     return processPath;
 }
 
+QString subProcessDirPath()
+{
+    static QString processDirPath;
+    if (processDirPath.isEmpty()) {
+        processDirPath = QFileInfo(subProcessPath()).absoluteDir().absolutePath();
+    }
+    return processDirPath;
+}
+
 QString localesPath()
 {
 #if defined(OS_MACOSX) && defined(QT_MAC_FRAMEWORK_BUILD)
@@ -164,6 +259,9 @@ QString localesPath()
 
     if (!initialized) {
         initialized = true;
+        if (!QFileInfo::exists(potentialLocalesPath)) {
+            potentialLocalesPath = subProcessDirPath() % QDir::separator() % QLatin1String("qtwebengine_locales");
+        }
         if (!QFileInfo::exists(potentialLocalesPath)) {
             qWarning("Installed Qt WebEngine locales directory not found at location %s. Trying application directory...", qPrintable(potentialLocalesPath));
             potentialLocalesPath = QCoreApplication::applicationDirPath() % QDir::separator() % QLatin1String("qtwebengine_locales");
@@ -187,6 +285,9 @@ QString icuDataPath()
     static QString potentialResourcesPath = QLibraryInfo::location(QLibraryInfo::DataPath) % QLatin1String("/resources");
     if (!initialized) {
         initialized = true;
+        if (!QFileInfo::exists(potentialResourcesPath % QLatin1String("/icudtl.dat"))) {
+            potentialResourcesPath = subProcessDirPath();
+        }
         if (!QFileInfo::exists(potentialResourcesPath % QLatin1String("/icudtl.dat"))) {
             qWarning("Qt WebEngine ICU data not found at %s. Trying parent directory...", qPrintable(potentialResourcesPath));
             potentialResourcesPath = QLibraryInfo::location(QLibraryInfo::DataPath);
@@ -214,6 +315,9 @@ QString resourcesDataPath()
     static QString potentialResourcesPath = QLibraryInfo::location(QLibraryInfo::DataPath) % QLatin1String("/resources");
     if (!initialized) {
         initialized = true;
+        if (!QFileInfo::exists(potentialResourcesPath % QLatin1String("/qtwebengine_resources.pak"))) {
+            potentialResourcesPath = subProcessDirPath();
+        }
         if (!QFileInfo::exists(potentialResourcesPath % QLatin1String("/qtwebengine_resources.pak"))) {
             qWarning("Qt WebEngine resources not found at %s. Trying parent directory...", qPrintable(potentialResourcesPath));
             potentialResourcesPath = QLibraryInfo::location(QLibraryInfo::DataPath);
