@@ -112,6 +112,77 @@ static QString getResourcesPath(CFBundleRef frameworkBundle)
 }
 #endif
 
+#if defined(_WIN32)
+static char *wchar_to_utf8(
+    const wchar_t *src,
+    size_t src_length, /* = 0 */
+    size_t *out_length /* = NULL */
+)
+{
+    int length;
+    char *output_buffer;
+    if (!src)
+    {
+        return NULL;
+    }
+
+    if (src_length == 0)
+    {
+        src_length = wcslen(src);
+    }
+    length = WideCharToMultiByte(CP_UTF8, 0, src, src_length,
+                                     0, 0, NULL, NULL);
+    output_buffer = (char *)malloc((length + 1) * sizeof(char));
+    if (output_buffer)
+    {
+        WideCharToMultiByte(CP_UTF8, 0, src, src_length,
+                            output_buffer, length, NULL, NULL);
+        output_buffer[length] = '\0';
+    }
+    if (out_length)
+    {
+        *out_length = length;
+    }
+    return output_buffer;
+}
+#endif
+
+static void getModuleFullpathForFunction(const void *function_pointer, char **utf8_str_ptr)
+{
+#if defined(_WIN32)
+    HMODULE hm = NULL;
+    DWORD moduleFlags = GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+    if (GetModuleHandleExW(moduleFlags, (LPCWSTR)function_pointer, &hm) == 0)
+    {
+        *utf8_str_ptr = strdup("");
+    }
+    else
+    {
+        DWORD size = MAX_PATH + 1;
+        wchar_t *space = (wchar_t *)malloc(sizeof(wchar_t) * size);
+        DWORD v;
+        for (;;)
+        {
+            v = GetModuleFileNameW(hm, space, size);
+            if (v >= size)
+            {
+                size += MAX_PATH;
+                space = (wchar_t *)realloc(space, sizeof(wchar_t) * size);
+                continue;
+            }
+            break;
+        }
+        *utf8_str_ptr = wchar_to_utf8(space, v, NULL);
+        free(space);
+    }
+#else
+    Dl_info info;
+    dladdr(function_pointer, &info);
+    *utf8_str_ptr = strdup(info.dli_fname);
+#endif
+}
+
 QString subProcessPath()
 {
     static QString processPath;
@@ -128,6 +199,17 @@ QString subProcessPath()
             // Only search in QTWEBENGINEPROCESS_PATH if set
             candidatePaths << QString::fromLocal8Bit(fromEnv);
         } else {
+#if defined(OS_WIN)
+            {
+                char *webengineCorePath = NULL;
+                getModuleFullpathForFunction(&subProcessPath, &webengineCorePath);
+                if (webengineCorePath != NULL) {
+                    QString processDirPath = QFileInfo(QString::fromUtf8(webengineCorePath)).absoluteDir().absolutePath();
+                    candidatePaths << processDirPath % QLatin1Char('/') % processBinary;
+                    free(webengineCorePath);
+                }
+            }
+#endif
 #if defined(OS_MACOSX) && defined(QT_MAC_FRAMEWORK_BUILD)
             candidatePaths << getPath(frameworkBundle())
                               % QStringLiteral("/Helpers/" QTWEBENGINEPROCESS_NAME ".app/Contents/MacOS/" QTWEBENGINEPROCESS_NAME);
