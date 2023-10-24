@@ -303,6 +303,32 @@ bool QWebEngineDownloadItem::isFinished() const
     return d->downloadFinished;
 }
 
+/*!
+    Returns the reason why the download was interrupted.
+    \since 5.9
+
+    \sa interruptReasonString()
+*/
+
+QWebEngineDownloadItem::DownloadInterruptReason QWebEngineDownloadItem::interruptReason() const
+{
+    Q_D(const QWebEngineDownloadItem);
+    return QWebEngineDownloadItem::NoReason;
+}
+
+/*!
+    Returns a human-readable description of the reason for interrupting the download.
+    \since 5.9
+
+    \sa interruptReason()
+*/
+
+QString QWebEngineDownloadItem::interruptReasonString() const
+{
+    return QCoreApplication::translate("DownloadInterruptReason",
+                                           "Unknown reason or not interrupted");
+}
+
 QWebEngineDownloadItem::QWebEngineDownloadItem(QWebEngineDownloadItemPrivate *p, QObject *parent)
     : QObject(parent)
     , d_ptr(p)
