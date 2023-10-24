@@ -166,6 +166,8 @@ public:
     QColor m_backgroundColor;
     bool fullscreenMode;
     QWebChannel *webChannel;
+    QPointer<QWebEnginePage> inspectedPage;
+    QPointer<QWebEnginePage> devToolsPage;
 
     mutable QtWebEngineCore::CallbackDirectory m_callbacks;
     mutable QAction *actions[QWebEnginePage::WebActionCount];

@@ -272,6 +272,11 @@ public:
     QColor backgroundColor() const;
     void setBackgroundColor(const QColor &color);
 
+    void setInspectedPage(QWebEnginePage *page);
+    QWebEnginePage *inspectedPage() const;
+    void setDevToolsPage(QWebEnginePage *page);
+    QWebEnginePage *devToolsPage() const;
+
 Q_SIGNALS:
     void loadStarted();
     void loadProgress(int progress);
