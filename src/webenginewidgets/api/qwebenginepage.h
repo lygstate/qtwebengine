@@ -114,6 +114,25 @@ public:
         InspectElement,
         ExitFullScreen,
         RequestClose,
+        Unselect,
+        SavePage,
+        OpenLinkInNewBackgroundTab,
+        ViewSource,
+
+        ToggleBold,
+        ToggleItalic,
+        ToggleUnderline,
+        ToggleStrikethrough,
+
+        AlignLeft,
+        AlignCenter,
+        AlignRight,
+        AlignJustified,
+        Indent,
+        Outdent,
+
+        InsertOrderedList,
+        InsertUnorderedList,
 
         WebActionCount
     };
@@ -127,7 +146,8 @@ public:
     enum WebWindowType {
         WebBrowserWindow,
         WebBrowserTab,
-        WebDialog
+        WebDialog,
+        WebBrowserBackgroundTab
     };
 
     enum PermissionPolicy {
@@ -154,7 +174,9 @@ public:
         MediaAudioCapture = 2,
         MediaVideoCapture,
         MediaAudioVideoCapture,
-        MouseLock
+        MouseLock,
+        DesktopVideoCapture,
+        DesktopAudioVideoCapture
     };
 
     // Ex-QWebFrame enum
