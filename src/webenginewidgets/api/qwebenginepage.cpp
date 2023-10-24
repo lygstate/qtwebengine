@@ -1404,6 +1404,22 @@ QUrl QWebEnginePage::iconUrl() const
     return d->adapter->iconUrl();
 }
 
+/*!
+    \property QWebEnginePage::icon
+    \brief The icon associated with the page currently viewed.
+    \since 5.7
+
+    By default, this property contains a null icon. If the web page specifies more than one icon,
+    the \c{icon} property encapsulates the available candidate icons in a single,
+    scalable \c{QIcon}.
+
+    \sa iconChanged(), iconUrl(), iconUrlChanged()
+*/
+QIcon QWebEnginePage::icon() const
+{
+    return QIcon();
+}
+
 qreal QWebEnginePage::zoomFactor() const
 {
     Q_D(const QWebEnginePage);

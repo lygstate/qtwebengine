@@ -72,7 +72,8 @@ class QWEBENGINEWIDGETS_EXPORT QWebEnginePage : public QObject {
     Q_PROPERTY(qreal zoomFactor READ zoomFactor WRITE setZoomFactor)
     Q_PROPERTY(QString title READ title)
     Q_PROPERTY(QUrl url READ url WRITE setUrl)
-    Q_PROPERTY(QUrl iconUrl READ iconUrl)
+    Q_PROPERTY(QUrl iconUrl READ iconUrl NOTIFY iconUrlChanged)
+    Q_PROPERTY(QIcon icon READ icon NOTIFY iconChanged)
     Q_PROPERTY(QColor backgroundColor READ backgroundColor WRITE setBackgroundColor)
 
 public:
@@ -249,6 +250,7 @@ public:
     QUrl url() const;
     QUrl requestedUrl() const;
     QUrl iconUrl() const;
+    QIcon icon() const;
 
     qreal zoomFactor() const;
     void setZoomFactor(qreal factor);
@@ -292,8 +294,8 @@ Q_SIGNALS:
     // Ex-QWebFrame signals
     void titleChanged(const QString &title);
     void urlChanged(const QUrl &url);
-    // Was iconChanged() in QWebFrame
     void iconUrlChanged(const QUrl &url);
+    void iconChanged(const QIcon &icon);
 
 protected:
     virtual QWebEnginePage *createWindow(WebWindowType type);

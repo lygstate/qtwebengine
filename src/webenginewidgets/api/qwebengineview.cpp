@@ -85,6 +85,7 @@ void QWebEngineViewPrivate::bind(QWebEngineView *view, QWebEnginePage *page)
         QObject::connect(page, &QWebEnginePage::titleChanged, view, &QWebEngineView::titleChanged);
         QObject::connect(page, &QWebEnginePage::urlChanged, view, &QWebEngineView::urlChanged);
         QObject::connect(page, &QWebEnginePage::iconUrlChanged, view, &QWebEngineView::iconUrlChanged);
+        QObject::connect(page, &QWebEnginePage::iconChanged, view, &QWebEngineView::iconChanged);
         QObject::connect(page, &QWebEnginePage::loadStarted, view, &QWebEngineView::loadStarted);
         QObject::connect(page, &QWebEnginePage::loadProgress, view, &QWebEngineView::loadProgress);
         QObject::connect(page, &QWebEnginePage::loadFinished, view, &QWebEngineView::loadFinished);
@@ -195,6 +196,20 @@ QUrl QWebEngineView::url() const
 QUrl QWebEngineView::iconUrl() const
 {
     return page()->iconUrl();
+}
+
+/*!
+    \property QWebEngineView::icon
+    \brief The icon associated with the page currently viewed.
+    \since 5.7
+
+    By default, this property contains a null icon.
+
+    \sa iconChanged(), iconUrl(), iconUrlChanged()
+*/
+QIcon QWebEngineView::icon() const
+{
+    return page()->icon();
 }
 
 bool QWebEngineView::hasSelection() const
