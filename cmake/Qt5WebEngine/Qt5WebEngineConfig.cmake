@@ -40,7 +40,6 @@ macro(_populate_WebEngine_target_properties Configuration LIB_LOCATION IMPLIB_LO
     set_property(TARGET Qt5::WebEngine APPEND PROPERTY IMPORTED_CONFIGURATIONS ${Configuration})
 
     set(imported_location "${_qt5WebEngine_install_prefix}/bin/${LIB_LOCATION}")
-    _qt5_WebEngine_check_file_exists(${imported_location})
     set_target_properties(Qt5::WebEngine PROPERTIES
         "INTERFACE_LINK_LIBRARIES" "${_Qt5WebEngine_LIB_DEPENDENCIES}"
         "IMPORTED_LOCATION_${Configuration}" ${imported_location}

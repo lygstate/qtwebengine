@@ -40,7 +40,6 @@ macro(_populate_WebEngineWidgets_target_properties Configuration LIB_LOCATION IM
     set_property(TARGET Qt5::WebEngineWidgets APPEND PROPERTY IMPORTED_CONFIGURATIONS ${Configuration})
 
     set(imported_location "${_qt5WebEngineWidgets_install_prefix}/bin/${LIB_LOCATION}")
-    _qt5_WebEngineWidgets_check_file_exists(${imported_location})
     set_target_properties(Qt5::WebEngineWidgets PROPERTIES
         "INTERFACE_LINK_LIBRARIES" "${_Qt5WebEngineWidgets_LIB_DEPENDENCIES}"
         "IMPORTED_LOCATION_${Configuration}" ${imported_location}
