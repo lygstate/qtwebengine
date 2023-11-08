@@ -1,0 +1,34 @@
+{
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "files.encoding": "gbk",
+  "files.autoGuessEncoding": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "C_Cpp.autoAddFileAssociations": false,
+  "C_Cpp.formatting": "clangFormat",
+  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+  "cmake.generator": "Ninja",
+  "cmake.configureArgs": [
+    "-DBUILD_TESTING:BOOL=TRUE"
+  ],
+  "cmake.buildDirectory": "${workspaceRoot}/build/${buildKitTriple}-${buildKitVersionMajor}-${buildKitVersionMinor}-${buildType}",
+  "cmake.configureOnOpen": false,
+  "cmake.additionalCompilerSearchDirs": [
+    "C:/CI-Tools/msys64/mingw64/bin",
+    "C:/CI-Tools/msys64/mingw32/bin",
+  ],
+  "terminal.integrated.profiles.windows": {
+    "MINGW64": {
+      "path": "C:/CI-Tools/msys64/usr/bin/bash.exe",
+      "overrideName": true,
+      "args": ["--login", "-i"],
+      "env": {
+        "MSYS": "winsymlinks:nativestrict",
+        "MSYSTEM": "MINGW64",
+        "CHERE_INVOKING": "1"
+      }
+    },
+  },
+}
